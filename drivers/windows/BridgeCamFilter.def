@@ -1,0 +1,6 @@
+LIBRARY "BridgeCamFilter"
+EXPORTS
+    DllRegisterServer   PRIVATE
+    DllUnregisterServer PRIVATE
+    DllGetClassObject   PRIVATE
+    DllCanUnloadNow     PRIVATE

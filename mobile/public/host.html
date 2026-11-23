@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>BridgeCam — Host</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles/main.css">
+    <style>
+      /* ── Host-page specific overrides ── */
+      html, body { align-items: flex-start; min-height: 100%; }
+
+      .host-container {
+        width: 100%;
+        max-width: 560px;
+        margin: 0 auto;
+        padding: 2rem 1.25rem 3rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+      }
+
+      /* Brand header */
+      .brand { text-align: center; padding-bottom: 0.5rem; }
+      .brand-title {
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: var(--accent);
+        letter-spacing: 0.04em;
+        text-shadow: 0 0 24px rgba(0,255,204,0.35);
+        margin-bottom: 0.25rem;
+      }
+      .brand-sub {
+        font-size: 0.82rem;
+        color: var(--text-muted);
+        letter-spacing: 0.03em;
+      }
+
+      /* Create button — full width hero */
+      .btn-create {
+        width: 100%;
+        padding: 0.85rem 1rem;
+        font-size: 1rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        background: var(--accent);
+        color: var(--bg);
+        border: none;
+        border-radius: var(--radius-lg);
+        cursor: pointer;
+        transition: all var(--transition-fast);
+        position: relative;
+        overflow: hidden;
+      }
+      .btn-create::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 60%);
+        pointer-events: none;
+      }
+      .btn-create:hover:not(:disabled) {
+        background: var(--accent-hover);
+        box-shadow: 0 0 28px rgba(0,255,204,0.45), 0 4px 16px rgba(0,0,0,0.4);
+        transform: translateY(-1px);
+      }
+      .btn-create:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
+      /* Room card */
+      .room-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        animation: slideUp 0.25s ease;
+      }
+      @keyframes slideUp {
+        from { opacity: 0; transform: translateY(12px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+
+      /* Room card header */
+      .room-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.85rem 1.1rem;
+        border-bottom: 1px solid var(--border);
+        background: var(--surface-hover);
+      }
+      .room-label {
+        font-size: 0.72rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--text-muted);
+      }
+      .room-id-chip {
+        font-family: 'JetBrains Mono', var(--font-mono);
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--accent);
+        background: var(--accent-dim);
+        padding: 0.2rem 0.65rem;
+        border-radius: var(--radius-full);
+        border: 1px solid rgba(0,255,204,0.2);
+        letter-spacing: 0.08em;
+      }
+
+      /* QR section */
+      .qr-section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.85rem;
+        padding: 1.5rem 1rem;
+        border-bottom: 1px solid var(--border);
+      }
+      .qr-wrapper {
+        background: #fff;
+        border-radius: var(--radius-md);
+        padding: 10px;
+        box-shadow: 0 0 0 1px rgba(0,255,204,0.2), var(--accent-glow);
+        line-height: 0;
+      }
+      .qr-wrapper img { display: block; border-radius: 4px; width: 180px; height: 180px; }
+      .qr-hint {
+        font-size: 0.78rem;
+        color: var(--text-muted);
+        text-align: center;
+      }
+
+      /* URL list */
+      .url-list {
+        list-style: none;
+        padding: 0.85rem 1.1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        border-bottom: 1px solid var(--border);
+      }
+      .url-row {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        min-width: 0;
+      }
+      .url-tag {
+        font-size: 0.68rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--text-muted);
+        white-space: nowrap;
+        min-width: 52px;
+      }
+      .url-tag.mobile { color: var(--accent); }
+      .url-link {
+        font-family: 'JetBrains Mono', var(--font-mono);
+        font-size: 0.78rem;
+        color: var(--accent);
+        text-decoration: none;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        flex: 1;
+        opacity: 0.85;
+        transition: opacity var(--transition-fast);
+      }
+      .url-link:hover { opacity: 1; text-decoration: underline; }
+      .copy-btn {
+        flex: none;
+        background: var(--surface-active);
+        border: 1px solid var(--border);
+        color: var(--text-muted);
+        font-size: 0.68rem;
+        padding: 0.2rem 0.5rem;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        transition: all var(--transition-fast);
+        font-family: var(--font-sans);
+        font-weight: 500;
+      }
+      .copy-btn:hover { color: var(--accent); border-color: var(--accent-dim); }
+      .copy-btn.copied { color: var(--success); border-color: var(--success); }
+
+      /* Action buttons */
+      .room-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+        padding: 0.85rem 1.1rem;
+      }
+      .room-actions button {
+        padding: 0.6rem 0.5rem;
+        font-size: 0.82rem;
+        font-weight: 600;
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        transition: all var(--transition-fast);
+        border: 1px solid var(--border);
+        background: var(--surface-hover);
+        color: var(--text);
+        font-family: var(--font-sans);
+      }
+      .room-actions button:hover {
+        background: var(--surface-active);
+        border-color: var(--accent-dim);
+        color: var(--accent);
+      }
+      .room-actions button.btn-primary-sm {
+        background: var(--accent-dim);
+        border-color: rgba(0,255,204,0.25);
+        color: var(--accent);
+      }
+      .room-actions button.btn-primary-sm:hover {
+        background: rgba(0,255,204,0.2);
+        box-shadow: var(--accent-glow);
+      }
+
+      /* Embedded receiver */
+      .receiver-section {
+        border-top: 1px solid var(--border);
+      }
+      .receiver-toggle {
+        width: 100%;
+        padding: 0.7rem 1.1rem;
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-align: left;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-family: var(--font-sans);
+        transition: color var(--transition-fast);
+      }
+      .receiver-toggle:hover { color: var(--text); }
+      .receiver-toggle .chevron { transition: transform 0.2s; font-size: 0.7rem; }
+      .receiver-toggle.open .chevron { transform: rotate(180deg); }
+      .receiver-frame-wrap {
+        padding: 0 0.75rem 0.75rem;
+      }
+      #receiverFrame {
+        width: 100%;
+        height: 300px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        background: #000;
+        display: block;
+      }
+
+      /* Error */
+      .error-bar {
+        background: var(--danger-dim);
+        border: 1px solid rgba(255,68,102,0.3);
+        border-radius: var(--radius-md);
+        color: var(--danger);
+        padding: 0.65rem 1rem;
+        font-size: 0.85rem;
+        text-align: center;
+      }
+
+      /* Footer */
+      .page-footer {
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 0.75rem;
+        padding-top: 0.5rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="host-container">
+
+      <!-- Brand -->
+      <header class="brand">
+        <div class="brand-title">BridgeCam</div>
+        <div class="brand-sub">Create a room · Scan QR · Your phone becomes a webcam</div>
+      </header>
+
+      <!-- Create room button -->
+      <button id="createRoom" class="btn-create">⚡ Create Room &amp; Show QR</button>
+
+      <!-- Error display -->
+      <div id="errorBar" class="error-bar" hidden></div>
+
+      <!-- Room card (hidden until room is created) -->
+      <div id="roomCard" class="room-card" hidden>
+
+        <!-- Room ID header -->
+        <div class="room-card-header">
+          <span class="room-label">Room</span>
+          <span id="roomIdChip" class="room-id-chip"></span>
+        </div>
+
+        <!-- QR Code -->
+        <div class="qr-section">
+          <div class="qr-wrapper">
+            <img id="qrImg" src="" alt="QR code — scan with your phone" />
+          </div>
+          <p class="qr-hint">📱 Scan with your phone to connect</p>
+        </div>
+
+        <!-- URL list -->
+        <ul id="urlList" class="url-list"></ul>
+
+        <!-- Action buttons -->
+        <div class="room-actions">
+          <button id="openReceiverBtn" class="btn-primary-sm">▶ Open Receiver Here</button>
+          <button id="openReceiverTabBtn">↗ Open in New Tab</button>
+          <button id="localCameraTest" hidden>Start local camera test</button>
+        </div>
+
+        <!-- Embedded receiver (collapsible) -->
+        <div id="receiverSection" class="receiver-section" hidden>
+          <button id="receiverToggle" class="receiver-toggle">
+            <span class="chevron">▼</span> Embedded Receiver
+          </button>
+          <div id="receiverFrameWrap" class="receiver-frame-wrap" hidden>
+            <iframe id="receiverFrame" src="" title="BridgeCam Receiver"></iframe>
+          </div>
+        </div>
+
+      </div>
+
+      <footer class="page-footer">Room codes are ephemeral — they vanish when the server restarts.</footer>
+    </div>
+
+    <script>
+      const createBtn   = document.getElementById('createRoom')
+      const roomCard    = document.getElementById('roomCard')
+      const errorBar    = document.getElementById('errorBar')
+      const roomIdChip  = document.getElementById('roomIdChip')
+      const qrImg       = document.getElementById('qrImg')
+      const urlList     = document.getElementById('urlList')
+      const openBtn     = document.getElementById('openReceiverBtn')
+      const openTabBtn  = document.getElementById('openReceiverTabBtn')
+      const testBtn     = document.getElementById('localCameraTest')
+      const recSection  = document.getElementById('receiverSection')
+      const recToggle   = document.getElementById('receiverToggle')
+      const recFrameWrap= document.getElementById('receiverFrameWrap')
+      const recFrame    = document.getElementById('receiverFrame')
+
+      let receiverUrl = null
+
+      function closePreview() {
+        recFrame.removeAttribute('src')
+        recFrameWrap.hidden = true
+        recToggle.classList.remove('open')
+      }
+
+      function copyText(text, btn) {
+        navigator.clipboard?.writeText(text).then(() => {
+          btn.textContent = 'Copied!'
+          btn.classList.add('copied')
+          setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied') }, 1800)
+        })
+      }
+
+      function makeUrlRow(tag, url, isMobile = false) {
+        const li = document.createElement('li')
+        li.className = 'url-row'
+        const tagEl = document.createElement('span')
+        tagEl.className = 'url-tag' + (isMobile ? ' mobile' : '')
+        tagEl.textContent = tag
+        const link = document.createElement('a')
+        link.className = 'url-link'
+        try {
+          const parsed = new URL(url, location.origin)
+          if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+            link.href = parsed.href
+          }
+        } catch (_) {}
+        link.target = '_blank'
+        link.rel = 'noopener noreferrer'
+        link.textContent = url
+        link.title = url
+        const copyEl = document.createElement('button')
+        copyEl.className = 'copy-btn'
+        copyEl.textContent = 'Copy'
+        copyEl.addEventListener('click', () => copyText(url, copyEl))
+        li.append(tagEl, link, copyEl)
+        return li
+      }
+
+      createBtn.addEventListener('click', async () => {
+        createBtn.disabled = true
+        createBtn.textContent = 'Creating…'
+        errorBar.hidden = true
+        roomCard.hidden = true
+        closePreview()
+        try {
+          const res  = await fetch('/create-room', { method: 'POST' })
+          if (!res.ok) throw new Error(`HTTP ${res.status}`)
+          const json = await res.json()
+          const encodedRoom = encodeURIComponent(json.roomId)
+          receiverUrl = `/receiver?room=${encodedRoom}`
+
+          roomIdChip.textContent = json.roomId
+          if (typeof json.qr === 'string' && json.qr.startsWith('data:image/')) {
+            qrImg.src = json.qr
+          }
+          urlList.textContent = ''
+
+          if (json.mobileUrl) urlList.appendChild(makeUrlRow('Mobile', json.mobileUrl, true))
+          if (json.joinUrl)   urlList.appendChild(makeUrlRow('Join', json.joinUrl))
+          if (json.lanJoinUrl) urlList.appendChild(makeUrlRow('LAN', json.lanJoinUrl))
+
+          openBtn.onclick = () => { closePreview(); location.href = receiverUrl }
+          openTabBtn.onclick = () => { closePreview(); window.open(receiverUrl, '_blank', 'noopener,noreferrer') }
+          testBtn.hidden = !['localhost', '127.0.0.1', '[::1]'].includes(location.hostname)
+          testBtn.onclick = () => {
+            const sender = window.open('about:blank', '_blank')
+            if (!sender) {
+              errorBar.textContent = 'Allow pop-ups for this local page to open the camera tab.'
+              errorBar.hidden = false
+              return
+            }
+            sender.opener = null
+            sender.location.href = `/?room=${encodedRoom}&testCamera=1`
+            closePreview()
+            location.href = `${receiverUrl}&testCamera=1`
+          }
+          recSection.hidden = false
+          roomCard.hidden = false
+
+        } catch (e) {
+          errorBar.textContent = '⚠ Failed to create room — is the server reachable?'
+          errorBar.hidden = false
+        }
+        createBtn.disabled = false
+        createBtn.textContent = '⚡ Create Room & Show QR'
+      })
+
+      // Collapsible receiver
+      recToggle.addEventListener('click', () => {
+        if (!recFrameWrap.hidden) {
+          closePreview()
+        } else if (receiverUrl) {
+          recFrame.src = receiverUrl
+          recFrameWrap.hidden = false
+          recToggle.classList.add('open')
+        }
+      })
+    </script>
+  </body>
+</html>

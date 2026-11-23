@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BridgeCam — Desktop</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css" />
+    <script type="module" src="./main.js" defer></script>
+  </head>
+
+  <body>
+
+    <!-- ═══ Top Toolbar ═══════════════════════════════════════════════ -->
+    <header class="toolbar">
+      <div class="toolbar-left">
+        <span class="logo">BridgeCam</span>
+        <span class="logo-badge">Desktop</span>
+      </div>
+      <div class="toolbar-center">
+        <!-- View Switcher -->
+        <div id="viewTabs" class="view-tabs" hidden>
+          <button id="tabRoom" class="tab-btn active" title="Room & Connection">
+            <span class="tab-icon">⊞</span>
+            <span class="tab-label">Room</span>
+          </button>
+          <button id="tabCamera" class="tab-btn" title="Live Camera Feed">
+            <span class="tab-icon">▣</span>
+            <span class="tab-label">Camera</span>
+          </button>
+        </div>
+        
+        <!-- Status Badges (moved deeper or visible in camera view) -->
+        <div id="toolbarStatus" class="toolbar-status">
+          <span id="status" class="badge">Waiting…</span>
+          <span id="latency" class="badge small accent" hidden>-- ms</span>
+          <span id="stats" class="badge small muted" hidden>fps: -- | dropped: --</span>
+          <!-- Sprint 10.5: Signal quality bars -->
+          <div id="qualityBars" class="quality-bars" title="Connection quality" hidden>
+            <div class="q-bar"></div>
+            <div class="q-bar"></div>
+            <div class="q-bar"></div>
+            <div class="q-bar"></div>
+          </div>
+        </div>
+      </div>
+      <div class="toolbar-right">
+        <!-- Post-Release: Recording controls (visible only while streaming) -->
+        <div id="recordingControls" class="recording-controls" hidden>
+          <button id="screenshotBtn" class="btn-toolbar ghost" title="Save screenshot (PNG)">⊡</button>
+          <button id="timelapseTriggerBtn" class="btn-toolbar ghost" title="Time-lapse capture">◷</button>
+          <button id="recordBtn" class="btn-toolbar ghost" title="Record to disk (WebM)">● Record</button>
+          <button id="stopRecordBtn" class="btn-toolbar danger" hidden title="Stop recording">■ Stop</button>
+          <button id="motionToggleBtn" class="btn-toolbar ghost" title="Motion-triggered recording">◉ Motion</button>
+        </div>
+        <div id="recIndicator" class="rec-indicator" hidden>
+          <span class="rec-dot"></span> REC
+        </div>
+        <button id="disconnectBtn" class="btn-toolbar danger" hidden>✕ Disconnect</button>
+        <button id="checkUpdateBtn" class="btn-toolbar ghost">↻ Update</button>
+        <span id="updateStatus" class="muted small"></span>
+        <button id="settingsBtn" class="btn-toolbar ghost" title="Settings">Settings</button>
+      </div>
+    </header>
+
+    <!-- ═══ Time-lapse config modal ═══════════════════════════════════ -->
+    <div id="timelapseModal" class="modal-overlay" hidden>
+      <div class="modal-card">
+        <div class="modal-title"><span>◷</span> Time-Lapse</div>
+        <p class="modal-body">Capture one frame every N seconds. Click Stop to compile and download a WebM video.</p>
+        <div class="captcha-row" style="flex-direction:column;align-items:flex-start;gap:0.5rem;">
+          <label class="cam-control-label">Interval (seconds)
+            <input id="timelapseInterval" type="number" min="1" max="3600" value="5"
+              class="captcha-input" style="width:5rem;display:inline-block;margin-left:0.5rem;" />
+          </label>
+        </div>
+        <div class="modal-actions">
+          <button id="timelapseCancel" class="secondary">Cancel</button>
+          <button id="timelapseStart" class="primary">▶ Start</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ Motion detection config modal ════════════════════════════ -->
+    <div id="motionModal" class="modal-overlay" hidden>
+      <div class="modal-card">
+        <div class="modal-title"><span>◉</span> Motion-Triggered Recording</div>
+        <p class="modal-body">Records to disk automatically when movement is detected. Recording continues while motion is detected and stops 5 seconds after the last movement.</p>
+        <div class="captcha-row" style="flex-direction:column;align-items:flex-start;gap:0.6rem;">
+          <label class="cam-control-label">Sensitivity (1–100)
+            <input id="motionSensitivity" type="number" min="1" max="100" value="20"
+              class="captcha-input" style="width:4rem;display:inline-block;margin-left:0.5rem;" />
+          </label>
+        </div>
+        <div class="modal-actions">
+          <button id="motionCancel" class="secondary">Cancel</button>
+          <button id="motionConfirm" class="primary">Enable</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ Connection panel (shown before connected) ═════════════════ -->
+    <main id="connectPanel" class="connect-main">
+      <section class="panel connect-card">
+        <div class="panel-title">
+          <span class="panel-icon">↯</span> Connect
+        </div>
+        <label class="field">
+          <span>Signaling Server</span>
+          <input id="serverUrl" type="text" placeholder="wss://bridgecam.onrender.com/ws" />
+        </label>
+        <div class="buttons">
+          <button id="createRoomBtn" class="primary">Create Room</button>
+        </div>
+        <div id="qrContainer" hidden>
+          <div class="qr-card">
+            <div class="qr-img-wrap">
+              <canvas id="qrCanvas"></canvas>
+            </div>
+            <div class="qr-meta">
+              <p class="room-id">Room <code id="roomIdDisplay"></code></p>
+              <p class="muted small" id="mobileLink"></p>
+              <p class="qr-scan-hint">Scan with your phone</p>
+            </div>
+          </div>
+        </div>
+        <div id="error" class="error" role="alert" hidden></div>
+
+        <!-- Sprint 14: VB-Audio Cable optional status notice -->
+        <div id="vbAudioBanner" class="vbaudio-banner" role="status" hidden>
+          <span class="vbaudio-text">Optional: Install <strong>VB-Audio Virtual Cable</strong> to use your phone as a PC microphone.</span>
+          <a id="vbAudioLink" href="https://vb-audio.com/Cable/" target="_blank" rel="noopener noreferrer" class="vbaudio-link">Download</a>
+          <button id="vbAudioDismiss" class="vbaudio-dismiss" aria-label="Dismiss VB-Audio notice">✕</button>
+        </div>
+
+        <!-- Sprint 14: 3-step quick-start onboarding strip -->
+        <ol class="onboarding-steps" aria-label="Quick start guide">
+          <li><span class="step-num">1</span><span>Scan the QR code with your phone</span></li>
+          <li><span class="step-num">2</span><span>Allow camera &amp; mic access in the browser</span></li>
+          <li><span class="step-num">3</span><span>Select <strong>BridgeCam Source</strong> in Zoom, OBS, or Teams</span></li>
+        </ol>
+
+        <!-- Recent rooms — lets user rejoin saved rooms without using a new slot -->
+        <div id="recentRoomsSection" hidden>
+          <div class="panel-title" style="margin-top:0.25rem">
+            <span class="panel-icon">◷</span> Recent Rooms
+          </div>
+          <ul id="recentRoomsList" class="recent-rooms-list"></ul>
+        </div>
+
+      </section>
+    </main>
+
+    <!-- ═══ Viewer layout (controls left · video right) ═══════════════ -->
+    <main id="viewerPanel" class="viewer-main" hidden>
+
+      <!-- Left sidebar: camera controls -->
+      <aside id="controlsSidebar" class="sidebar">
+        <div class="sidebar-header">
+          <button id="sidebarToggleBtn" class="sidebar-icon" title="Toggle camera controls">≡</button>
+          <span class="sidebar-title">Camera Controls</span>
+          <button id="refreshCapsBtn" class="btn-toolbar ghost" title="Refresh capabilities">↻</button>
+        </div>
+        <div id="cameraControlsGrid" class="camera-controls-grid">
+          <p id="cameraControlsEmpty" class="muted small sidebar-empty">Waiting for phone…</p>
+        </div>
+      </aside>
+
+      <!-- Right: video + info -->
+      <section class="video-section">
+        <div class="video-wrap">
+          <video id="remote" autoplay playsinline muted></video>
+          <div id="videoWaitingOverlay" class="video-waiting-overlay" hidden>
+            <span id="videoWaitingText">Connecting video stream…</span>
+          </div>
+        </div>
+        <div id="senderDiagnostic" class="diagnostic" hidden></div>
+        <div class="video-footer">
+          <div class="buttons">
+            <button id="startPipeBtn" class="primary btn-compact" hidden>▶ Start Pipe</button>
+          </div>
+          <p id="micStatus" class="muted small" hidden></p>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ═══ Math CAPTCHA modal ════════════════════════════════════════ -->
+    <div id="captchaModal" class="modal-overlay" hidden>
+      <div class="modal-card">
+        <div class="modal-title">
+          <span>⊘</span> Confirm Room Creation
+        </div>
+        <p class="modal-body">Solve the puzzle to create a new room.<br>
+          You can create <strong>2 rooms per hour</strong> — existing rooms stay accessible.</p>
+        <div class="captcha-row">
+          <span id="captchaQuestion" class="captcha-question"></span>
+          <span class="captcha-eq">=</span>
+          <input id="captchaAnswer" type="number" class="captcha-input" placeholder="?" autocomplete="off" />
+        </div>
+        <p id="captchaError" class="captcha-err" hidden>Wrong answer — try again</p>
+        <div class="modal-actions">
+          <button id="captchaCancel" class="secondary">Cancel</button>
+          <button id="captchaConfirm" class="primary">Create Room</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ Settings Panel ═══════════════════════════════════════════ -->
+    <div id="settingsOverlay" class="settings-overlay" hidden>
+      <div id="settingsPanel" class="settings-panel">
+
+        <!-- Header -->
+        <div class="settings-header">
+          <div class="settings-title">Settings</div>
+          <button id="settingsCloseBtn" class="settings-close-btn" title="Close">✕</button>
+        </div>
+
+        <!-- Scrollable body -->
+        <div class="settings-body">
+
+          <!-- ── Connection (advanced) ──────────────────── -->
+          <div class="settings-section settings-advanced">
+            <div class="settings-section-label">↔ Connection</div>
+            <div class="settings-section-content">
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <span class="settings-row-title">Default Server URL</span>
+                <span class="settings-row-desc">Pre-fill the signaling server address on startup</span>
+              </div>
+              <input id="settingDefaultServer" type="text" class="settings-input" placeholder="wss://bridgecam.onrender.com/ws" />
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <span class="settings-row-title">Auto-Reconnect</span>
+                <span class="settings-row-desc">Automatically re-join room if connection drops</span>
+              </div>
+              <label class="settings-toggle">
+                <input type="checkbox" id="settingAutoReconnect" checked />
+                <span class="settings-toggle-track"></span>
+              </label>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <span class="settings-row-title">Max Reconnect Attempts</span>
+                <span class="settings-row-desc">Stop retrying after this many failures (0 = unlimited)</span>
+              </div>
+              <input id="settingMaxReconnects" type="number" min="0" max="99" value="10" class="settings-input settings-input-sm" />
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <span class="settings-row-title">ICE Transport Policy</span>
+                <span class="settings-row-desc">Force relay (TURN) or allow direct host connections</span>
+              </div>
+              <select id="settingIcePolicy" class="settings-select">
+                <option value="all" selected>All (LAN first)</option>
+                <option value="relay">Relay only (TURN)</option>
+              </select>
+            </div>
+            </div>
+          </div>
+
+          <!-- ── Frame Pipe (advanced) ──────────────────────────── -->
+          <div class="settings-section settings-advanced">
+            <div class="settings-section-label">▣ Frame Pipe</div>
+            <div class="settings-section-content">
+
+            <!-- Runtime pipe controls (visible only while pipe is running) -->
+            <div id="pipeRuntimeControls" class="settings-row pipe-runtime" hidden>
+              <div class="settings-row-info">
+                <span class="settings-row-title">Pipe Status</span>
+                <span class="settings-row-desc" id="pipeStatusDesc">Not running</span>
+              </div>
+              <div style="display:flex;gap:0.4rem;align-items:center;">
+                <select id="pipeTierSelect" class="settings-select" title="Frame pipe quality">
+                  <option value="balanced">↯ Balanced (1280p)</option>
+                  <option value="quality">◆ Quality (1080p)</option>
+                  <option value="ultra">◇ Ultra (4K)</option>
+                </select>
+                <button id="stopPipeBtn" class="settings-danger-btn">■ Stop</button>
+              </div>
+            </div>
+
+            <div id="shmInfo" class="settings-row" hidden>
+              <div class="settings-row-info">
+                <span class="settings-row-title">Shared Memory</span>
+                <span class="settings-row-desc">SHM path for virtual camera driver</span>
+              </div>
+              <div style="display:flex;gap:0.3rem;align-items:center;">
+                <code id="shmPath" class="settings-row-desc" style="color:var(--accent);"></code>
+                <button id="copyPathBtn" class="btn-ghost btn-sm" title="Copy path">Copy</button>
+              </div>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <span class="settings-row-title">Default Quality Tier</span>
+                <span class="settings-row-desc">Starting resolution tier when pipe is launched</span>
+              </div>
+              <select id="settingDefaultTier" class="settings-select">
+                <option value="balanced" selected>↯ Balanced (1280p)</option>
+                <option value="quality">◆ Quality (1080p)</option>
+                <option value="ultra">◇ Ultra (4K)</option>
+              </select>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <span class="settings-row-title">Target Frame Rate</span>
+                <span class="settings-row-desc">RVFC scheduling target (actual FPS depends on hardware)</span>
+              </div>
+              <select id="settingTargetFps" class="settings-select">
+                <option value="30">30 fps</option>
+                <option value="60" selected>60 fps</option>
+              </select>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <span class="settings-row-title">Double-Buffer Workers</span>
+                <span class="settings-row-desc">Use A/B worker ping-pong to reduce frame drops</span>
+              </div>
+              <label class="settings-toggle">
+                <input type="checkbox" id="settingDoubleBuffer" checked />
+                <span class="settings-toggle-track"></span>
+              </label>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <span class="settings-row-title">Fast Copy Path (VideoFrame.copyTo)</span>
+                <span class="settings-row-desc">Skip canvas when source fills output (Tier A, ~1ms)</span>
+              </div>
+              <label class="settings-toggle">
+                <input type="checkbox" id="settingFastCopy" checked />
+                <span class="settings-toggle-track"></span>
+              </label>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <span class="settings-row-title">Socket Receive Buffer</span>
+                <span class="settings-row-desc">Rust TCP SO_RCVBUF size (restart app to apply)</span>
+              </div>
+              <select id="settingRcvBuf" class="settings-select">
+                <option value="16">16 MB</option>
+                <option value="32">32 MB</option>
+                <option value="64" selected>64 MB (4K)</option>
+              </select>
+            </div>
+            </div>
+          </div>
+
+          <!-- ── Display ───────────────────────────────────────── -->
+          <div class="settings-section">
+            <div class="settings-section-label">▢ Display</div>
+            <div class="settings-section-content">
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <span class="settings-row-title">Show Stats Overlay</span>
+                <span class="settings-row-desc">FPS, dropped frames, latency badge in toolbar</span>
+              </div>
+              <label class="settings-toggle">
+                <input type="checkbox" id="settingShowStats" checked />
+                <span class="settings-toggle-track"></span>
+              </label>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <span class="settings-row-title">Show Quality Bars</span>
+                <span class="settings-row-desc">Signal-strength indicator in the toolbar</span>
+              </div>
+              <label class="settings-toggle">
+                <input type="checkbox" id="settingShowQuality" checked />
+                <span class="settings-toggle-track"></span>
+              </label>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <span class="settings-row-title">Video Fit</span>
+                <span class="settings-row-desc">How the video fills the preview area</span>
+              </div>
+              <select id="settingVideoFit" class="settings-select">
+                <option value="contain" selected>Contain (letterbox)</option>
+                <option value="cover">Cover (crop)</option>
+                <option value="fill">Fill (stretch)</option>
+              </select>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <span class="settings-row-title">Accent Color</span>
+                <span class="settings-row-desc">UI highlight color (neon presets)</span>
+              </div>
+              <div class="settings-color-row" id="accentColorPicker">
+                <button class="accent-swatch active" data-color="#00e5b8" style="--sw:#00e5b8" title="Cyan"></button>
+                <button class="accent-swatch" data-color="#00b4ff" style="--sw:#00b4ff" title="Blue"></button>
+                <button class="accent-swatch" data-color="#bf5af2" style="--sw:#bf5af2" title="Purple"></button>
+                <button class="accent-swatch" data-color="#ff375f" style="--sw:#ff375f" title="Red"></button>
+                <button class="accent-swatch" data-color="#ff9f0a" style="--sw:#ff9f0a" title="Orange"></button>
+                <button class="accent-swatch" data-color="#30d158" style="--sw:#30d158" title="Green"></button>
+              </div>
+            </div>
+            </div>
+          </div>
+
+          <!-- ── Audio (advanced) ─────────────────────────────── -->
+          <div class="settings-section settings-advanced">
+            <div class="settings-section-label">♪ Audio</div>
+            <div class="settings-section-content">
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <span class="settings-row-title">Mic Pipe Auto-Start</span>
+                <span class="settings-row-desc">Automatically start audio pipe when video connects</span>
+              </div>
+              <label class="settings-toggle">
+                <input type="checkbox" id="settingMicAutoStart" />
+                <span class="settings-toggle-track"></span>
+              </label>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <span class="settings-row-title">Audio Sample Rate</span>
+                <span class="settings-row-desc">AudioContext sample rate for mic pipe</span>
+              </div>
+              <select id="settingAudioSampleRate" class="settings-select">
+                <option value="44100">44,100 Hz</option>
+                <option value="48000" selected>48,000 Hz</option>
+              </select>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <span class="settings-row-title">Noise Suppression</span>
+                <span class="settings-row-desc">Apply browser noise suppression to mic stream</span>
+              </div>
+              <label class="settings-toggle">
+                <input type="checkbox" id="settingNoiseSuppression" checked />
+                <span class="settings-toggle-track"></span>
+              </label>
+            </div>
+            </div>
+          </div>
+
+          <!-- ── Recording & Capture ───────────────────────────── -->
+          <div class="settings-section">
+            <div class="settings-section-label">● Recording &amp; Capture</div>
+            <div class="settings-section-content">
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <span class="settings-row-title">Save Directory</span>
+                <span class="settings-row-desc">Save recordings & screenshots to a folder on disk instead of browser downloads</span>
+                <span id="settingRecSaveDirDisplay" class="settings-row-desc" style="color:var(--accent);margin-top:0.15rem;">Downloads (browser default)</span>
+              </div>
+              <input type="hidden" id="settingRecSaveDir" value="" />
+              <div style="display:flex;gap:0.3rem;">
+                <button id="settingRecBrowse" class="settings-danger-btn" style="color:var(--accent);border-color:var(--accent-dim);background:var(--accent-dim);">Browse</button>
+                <button id="settingRecClearDir" class="settings-danger-btn">Clear</button>
+              </div>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <span class="settings-row-title">Recording Codec</span>
+                <span class="settings-row-desc">Preferred WebM video codec for recordings</span>
+              </div>
+              <select id="settingRecCodec" class="settings-select">
+                <option value="vp9" selected>VP9 (best quality)</option>
+                <option value="vp8">VP8 (faster)</option>
+                <option value="auto">Auto (browser pick)</option>
+              </select>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <span class="settings-row-title">Time-Lapse Interval</span>
+                <span class="settings-row-desc">Default seconds between time-lapse captures (1–3600)</span>
+              </div>
+              <input id="settingTimelapseInterval" type="number" min="1" max="3600" value="5" class="settings-input settings-input-sm" />
+            </div>
+            </div>
+          </div>
+
+          <!-- ── Motion Detection ──────────────────────────────── -->
+          <div class="settings-section">
+            <div class="settings-section-label">◉ Motion Detection</div>
+            <div class="settings-section-content">
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <span class="settings-row-title">How It Works</span>
+                <span class="settings-row-desc">Motion detection compares consecutive video frames by computing the mean absolute luma difference across a 160×90 downsampled grid at 5 fps. When the difference exceeds the sensitivity threshold, recording starts automatically. Recording continues as long as motion is detected and stops 5 seconds after the last detected movement.</span>
+              </div>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <span class="settings-row-title">Default Sensitivity</span>
+                <span class="settings-row-desc">1 = subtle movement only, 100 = very sensitive (1–100)</span>
+              </div>
+              <input id="settingMotionSensitivity" type="number" min="1" max="100" value="20" class="settings-input settings-input-sm" />
+            </div>
+
+
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <span class="settings-row-title">Auto-Enable on Connect</span>
+                <span class="settings-row-desc">Automatically start motion detection when phone connects</span>
+              </div>
+              <label class="settings-toggle">
+                <input type="checkbox" id="settingMotionAutoEnable" />
+                <span class="settings-toggle-track"></span>
+              </label>
+            </div>
+            </div>
+          </div>
+
+          <!-- ── Privacy & Storage ─────────────────────────────── -->
+          <div class="settings-section">
+            <div class="settings-section-label">⊘ Privacy &amp; Storage</div>
+            <div class="settings-section-content">
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <span class="settings-row-title">Save Room History</span>
+                <span class="settings-row-desc">Remember recently created rooms for quick rejoin</span>
+              </div>
+              <label class="settings-toggle">
+                <input type="checkbox" id="settingSaveHistory" checked />
+                <span class="settings-toggle-track"></span>
+              </label>
+            </div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <span class="settings-row-title">Max Room History</span>
+                <span class="settings-row-desc">How many past rooms to keep (1–20)</span>
+              </div>
+              <input id="settingMaxHistory" type="number" min="1" max="20" value="5" class="settings-input settings-input-sm" />
+            </div>
+
+            <div class="settings-row settings-row-danger">
+              <div class="settings-row-info">
+                <span class="settings-row-title">Clear Room History</span>
+                <span class="settings-row-desc">Remove all saved rooms from local storage</span>
+              </div>
+              <button id="settingClearHistory" class="settings-danger-btn">Clear</button>
+            </div>
+
+            <div class="settings-row settings-row-danger">
+              <div class="settings-row-info">
+                <span class="settings-row-title">Reset All Settings</span>
+                <span class="settings-row-desc">Restore every setting to its default value</span>
+              </div>
+              <button id="settingResetAll" class="settings-danger-btn">Reset</button>
+            </div>
+            </div>
+          </div>
+
+          <!-- ── About ─────────────────────────────────────────── -->
+          <div class="settings-section">
+            <div class="settings-section-label">(i) About</div>
+            <div class="settings-section-content">
+            <div class="settings-about">
+              <span class="settings-about-name">BridgeCam</span>
+              <span id="settingsVersion" class="settings-about-ver">v—</span>
+              <span class="settings-about-tagline">Open-source phone-to-PC webcam over LAN</span>
+              <span class="settings-about-license">GPLv3 · <a href="https://github.com/CQNNQR/BridgeCam" target="_blank" class="settings-link">GitHub</a></span>
+            </div>
+            </div>
+          </div>
+
+        </div><!-- /settings-body -->
+
+        <!-- Footer -->
+        <div class="settings-footer">
+          <button id="settingsSaveBtn" class="primary">Save Changes</button>
+          <button id="advancedToggleBtn" class="settings-advanced-btn" title="Show advanced settings">Advanced</button>
+          <span id="settingsSaveStatus" class="settings-save-status"></span>
+        </div>
+
+      </div><!-- /settings-panel -->
+    </div><!-- /settings-overlay -->
+
+  </body>
+</html>

@@ -1,0 +1,56 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "BridgeCam",
+  "version": "1.0.0+1",
+  "identifier": "com.bridgecam.desktop",
+  "build": {
+    "frontendDist": "../src"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "BridgeCam — Webcam Mode",
+        "width": 900,
+        "height": 650,
+        "resizable": true,
+        "minWidth": 480,
+        "minHeight": 400
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src 'self' ws: wss: http: https:; script-src 'self'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob:"
+    }
+  },
+
+  "bundle": {
+    "active": true,
+    "createUpdaterArtifacts": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "nsis": {
+        "installerHooks": "nsis/installer.nsi",
+        "installMode": "perMachine",
+        "languages": ["English"],
+        "displayLanguageSelector": false
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/CQNNQR/BridgeCam/releases/latest/download/latest.json",
+        "https://bridgecam.onrender.com/update/latest"
+      ],
+      "dialog": true,
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEE0QkNEMDZFMzE5OTZDQkUKUldTK2JKa3hidEM4cFAweC9Ma0dwUkYxZ0JWME5NSnpTVStINmhwWTJFQ0NrOFFHVmtVL2N0clUK"
+    }
+  }
+}

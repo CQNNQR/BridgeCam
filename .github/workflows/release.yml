@@ -1,0 +1,102 @@
+name: Release
+
+on:
+  push:
+    branches: ['codex/release-*']
+    tags: ['v*.*.*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    name: Build and test signed Windows installer
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri
+
+      - name: Build virtual camera
+        run: |
+          cmake -S drivers/windows -B drivers/windows/build_release -G "Visual Studio 17 2022" -A x64
+          cmake --build drivers/windows/build_release --config Release --target BridgeCamFilter
+
+      - name: Install desktop dependencies
+        run: npm ci
+        working-directory: desktop
+
+      - name: Build and sign NSIS installer
+        run: npx tauri build --config src-tauri/tauri.release.conf.json
+        working-directory: desktop
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+      - name: Prepare release files
+        shell: pwsh
+        run: |
+          $config = Get-Content -Raw desktop/src-tauri/tauri.conf.json | ConvertFrom-Json
+          $version = $config.version
+          $tag = 'v' + ($version -split '\+', 2)[0]
+          if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne $tag) {
+            throw "Tag $env:GITHUB_REF_NAME does not match desktop release $tag"
+          }
+          $nsis = @(Get-ChildItem desktop/src-tauri/target/release/bundle/nsis -Filter '*-setup.exe')
+          if ($nsis.Count -ne 1) { throw "Expected one NSIS installer" }
+          $sig = Get-Item "$($nsis[0].FullName).sig"
+          New-Item -ItemType Directory release-files | Out-Null
+          Copy-Item $nsis[0].FullName,$sig.FullName release-files/
+          $installerName = [uri]::EscapeDataString($nsis[0].Name)
+          $manifest = [ordered]@{
+            version = $version
+            notes = "BridgeCam $tag"
+            pub_date = [DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
+            platforms = @{
+              'windows-x86_64' = @{
+                signature = (Get-Content -Raw $sig.FullName).Trim()
+                url = "https://github.com/$env:GITHUB_REPOSITORY/releases/download/$tag/$installerName"
+              }
+            }
+          }
+          $manifest | ConvertTo-Json -Depth 5 | Set-Content release-files/latest.json -Encoding utf8NoBOM
+
+      - name: Verify upgrade from the installed v1.0.0 build
+        if: startsWith(github.ref, 'refs/heads/codex/release-')
+        shell: pwsh
+        run: |
+          $version = (Get-Content -Raw release-files/latest.json | ConvertFrom-Json).version
+          if ($version -ne '1.0.0+1') { exit 0 }
+          $oldInstaller = Join-Path $env:RUNNER_TEMP 'bridgecam-1.0.0.exe'
+          Invoke-WebRequest 'https://github.com/CQNNQR/BridgeCam/releases/download/v1.0.0/BridgeCam_1.0.0_x64-setup.exe' -OutFile $oldInstaller
+          $entry = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\BridgeCam'
+          $oldInstall = Start-Process -FilePath $oldInstaller -ArgumentList '/S' -Wait -PassThru
+          if ($oldInstall.ExitCode -ne 0 -or (Get-ItemProperty $entry).DisplayVersion -ne '1.0.0') {
+            throw 'Baseline installer did not install BridgeCam 1.0.0'
+          }
+          $setup = Get-ChildItem release-files -Filter '*-setup.exe' | Select-Object -First 1
+          $update = Start-Process -FilePath $setup.FullName -ArgumentList '/S','/UPDATE' -Wait -PassThru
+          if ($update.ExitCode -ne 0 -or (Get-ItemProperty $entry).DisplayVersion -ne $version) {
+            throw "Existing installation did not update to $version"
+          }
+          $installed = (Get-ItemProperty $entry).InstallLocation.Trim('"')
+          $source = Join-Path $installed 'resources\BridgeCamMFSource_x64.dll'
+          $class = 'Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Classes\CLSID\{B9EAAFE1-1234-5678-ABCD-1234567890AB}\InprocServer32'
+          if (!(Test-Path -LiteralPath $source) -or (Get-Item $class).GetValue('') -ne $source) {
+            throw 'The virtual camera DLL was not installed and registered'
+          }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bridgecam-windows-signed
+          path: release-files/
+          if-no-files-found: error

@@ -1,0 +1,43 @@
+[Version]
+Signature="$Windows NT$"
+Class=Sample
+ClassGuid={B9EAAFE0-1234-5678-ABCD-1234567890AB}
+Provider=%ProviderName%
+CatalogFile=bridgecam.cat
+
+[Strings]
+ProviderName="BridgeCam"
+DiskName="BridgeCam Driver Files"
+
+[DestinationDirs]
+DefaultDestDir=12  ; System32
+
+[SourceDisksNames]
+1 = %DiskName%,,,
+
+[SourceDisksFiles]
+BridgeCamFilter.dll=1
+
+[DefaultInstall]
+CopyFiles=CopyFilesSection
+AddReg=RegisterSection
+
+[DefaultUninstall]
+DelFiles=CopyFilesSection
+DelReg=UnregisterSection
+
+[CopyFilesSection]
+BridgeCamFilter.dll,,0x00000000
+
+[RegisterSection]
+; Register COM class
+HKCR,CLSID\{B9EAAFE0-1234-5678-ABCD-1234567890AB},,"BridgeCam Source"
+HKCR,CLSID\{B9EAAFE0-1234-5678-ABCD-1234567890AB}\InprocServer32,,"%11%\\BridgeCamFilter.dll"
+HKCR,CLSID\{B9EAAFE0-1234-5678-ABCD-1234567890AB}\InprocServer32,,,"Apartment"
+; Add to video capture category
+HKCR,CLSID\{B9EAAFE0-1234-5678-ABCD-1234567890AB}\Implemented Categories\{860BB310-5D01-11d0-BD3B-00A0C911CE86},,
+
+[UnregisterSection]
+HKCR,CLSID\{B9EAAFE0-1234-5678-ABCD-1234567890AB},
+HKCR,CLSID\{B9EAAFE0-1234-5678-ABCD-1234567890AB}\InprocServer32,
+HKCR,CLSID\{B9EAAFE0-1234-5678-ABCD-1234567890AB}\Implemented Categories\{860BB310-5D01-11d0-BD3B-00A0C911CE86},

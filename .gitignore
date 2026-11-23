@@ -1,0 +1,68 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+build/
+target/
+*.exe
+*.dmg
+*.deb
+*.AppImage
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Tauri
+desktop/src-tauri/target/
+desktop/src-tauri/WixTools/
+desktop/src-tauri/icons/
+
+# Driver build artifacts
+drivers/windows/build/
+drivers/windows/build32/
+drivers/windows/build_x64/
+drivers/windows/build*/
+drivers/windows/*.obj
+drivers/windows/*.lib
+drivers/windows/*.dll
+drivers/windows/*.exp
+drivers/windows/deploy_ok.txt
+drivers/macos/*.dylib
+drivers/linux/*.ko
+
+# Local TLS certs & private keys (never commit)
+server/cert/
+*.key
+*.crt
+*.pem
+
+# Test outputs
+test-results/
+playwright-report/
+blob-report/
+
+# Temp files
+build_err.txt
+build_log.txt
+deploy_now.bat
+deploy_result*.txt
+drivers/linux/*.o

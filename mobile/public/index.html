@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="theme-color" content="#0b0f13" />
+    <title>BridgeCam — Mobile Sender</title>
+    <link rel="manifest" href="/manifest.json">
+    <link rel="stylesheet" href="/styles/main.css">
+  </head>
+  <body>
+    <main class="container">
+      <header>
+        <h1>BridgeCam — Camera</h1>
+        <p class="muted">Open a URL → Scan QR → Your phone is a webcam</p>
+      </header>
+
+      <section class="viewer">
+        <video id="preview" autoplay playsinline muted></video>
+        <div class="overlay">
+          <div id="status" class="badge">Idle</div>
+        </div>
+      </section>
+
+      <section class="controls">
+        <label>Camera
+          <select id="cameraSelect"></select>
+        </label>
+
+        <label>Resolution
+          <select id="resolutionSelect">
+            <option value="720">720p</option>
+            <option value="1080" selected>1080p</option>
+            <option value="2160">4K (if supported)</option>
+          </select>
+        </label>
+
+        <label>Frame rate
+          <select id="frameRateSelect">
+            <option value="15">15 FPS (low bandwidth)</option>
+            <option value="24">24 FPS (cinematic)</option>
+            <option value="30" selected>30 FPS</option>
+            <option value="60">60 FPS</option>
+          </select>
+        </label>
+
+        <div class="buttons">
+          <button id="startBtn" class="primary">Start Camera</button>
+          <button id="stopBtn" class="secondary" disabled>Stop</button>
+          <button id="rescanBtn" class="secondary">Rescan Devices</button>
+          <button id="installBtn" class="secondary" hidden>Install</button>
+        </div>
+
+        <div class="toggles">
+          <label><input type="checkbox" id="wakeLockToggle"> Prevent sleep (Wake Lock)</label>
+          <label><input type="checkbox" id="micToggle"> Enable microphone</label>
+          <label><input type="checkbox" id="disableAutoFallback"> Disable auto-fallback (force selected FPS)</label>
+          <label><input type="checkbox" id="stealthToggle"> 🕵️ Stealth Mode (black screen, stream continues)</label>
+        </div>
+
+        <div id="error" class="error" role="alert" hidden></div>
+      </section>
+
+      <footer class="hint">
+        <small>Tip: grant camera permission and choose a higher resolution for better quality.</small>
+      </footer>
+    </main>
+
+    <script type="module" src="/src/app.js"></script>
+  </body>
+</html>

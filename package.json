@@ -1,0 +1,25 @@
+{
+  "name": "bridgecam",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Turn your phone into a high-definition wireless PC webcam and microphone",
+  "scripts": {
+    "test": "npm --prefix server test",
+    "test:server": "npm --prefix server test",
+    "test:e2e": "playwright test",
+    "test:rust": "cargo test --manifest-path desktop/src-tauri/Cargo.toml"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CQNNQR/BridgeCam.git"
+  },
+  "license": "GPL-3.0-or-later",
+  "bugs": {
+    "url": "https://github.com/CQNNQR/BridgeCam/issues"
+  },
+  "homepage": "https://github.com/CQNNQR/BridgeCam#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "ws": "^8.20.1"
+  }
+}

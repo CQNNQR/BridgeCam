@@ -1,0 +1,8 @@
+{
+  "bundle": {
+    "targets": ["nsis"],
+    "resources": {
+      "../../drivers/windows/build_release/Release/BridgeCamFilter.dll": "resources/BridgeCamMFSource_x64.dll"
+    }
+  }
+}
